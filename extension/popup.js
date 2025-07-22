@@ -187,16 +187,120 @@ function fetchCodespaces(token) {
                 codespacesList.innerHTML = '<div>No Codespaces found.</div>';
                 return;
             }
-            codespacesList.innerHTML = data.codespaces.map(cs => `
-        <div class="codespace flex items-center justify-between py-2 border-b last:border-b-0">
-          <a href="#" data-url="${cs.web_url}" class="codespace-link text-blue-600 hover:underline font-medium">${cs.name}</a>
-          <span class="status px-2 py-1 rounded text-xs font-semibold ${cs.state === 'Available' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}">${cs.state}</span>
+            codespacesList.innerHTML = data.codespaces.map(cs => {
+                const isAvailable = cs.state === 'Available';
+                // Try to get repo name from cs.repository.name or cs.repository.full_name if available
+                let repoName = '';
+                if (cs.repository && (cs.repository.name || cs.repository.full_name)) {
+                    repoName = cs.repository.full_name || cs.repository.name;
+                } else if (cs.git_status && cs.git_status.ref) {
+                    repoName = cs.git_status.ref;
+                }
+                return `
+        <div class="codespace flex flex-col py-2 border-b last:border-b-0">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <a href="#" data-url="${cs.web_url}" class="codespace-link text-blue-600 hover:underline font-medium">${cs.name}</a>
+              ${repoName ? `<span class='text-xs text-gray-500 ml-1'>(${repoName})</span>` : ''}
+              ${isAvailable ? `<button class="stop-codespace-btn bg-gray-300 hover:bg-gray-400 text-gray-700 px-2 py-1 rounded ml-2 flex items-center justify-center" style="width:28px;height:28px;" data-name="${cs.name}" data-id="${cs.id}" title="Stop Codespace">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="3" y="3" width="10" height="10" rx="0" fill="#555" />
+                </svg>
+              </button>` : ''}
+              ${!isAvailable ? `<button class="start-codespace-btn bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded flex items-center justify-center" style="width:28px;height:28px;" data-name="${cs.name}" data-id="${cs.id}" title="Start Codespace">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <polygon points="5,3 13,8 5,13" fill="#fff" />
+                </svg>
+              </button>` : ''}
+              <button class="delete-codespace-btn bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded flex items-center justify-center" style="width:28px;height:28px;" data-name="${cs.name}" data-id="${cs.id}" title="Delete Codespace">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="6" y="7" width="4" height="6" fill="#fff" />
+                  <rect x="4" y="5" width="8" height="2" fill="#fff" />
+                  <rect x="7" y="2" width="2" height="2" fill="#fff" />
+                </svg>
+              </button>
+            </div>
+            <span class="status px-2 py-1 rounded text-xs font-semibold ${isAvailable ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}">${cs.state}</span>
+          </div>
         </div>
-      `).join('');
+      `;
+            }).join('');
             document.querySelectorAll('.codespace-link').forEach(link => {
                 link.addEventListener('click', e => {
                     e.preventDefault();
                     openTab(link.dataset.url);
+                });
+            });
+            document.querySelectorAll('.delete-codespace-btn').forEach(btn => {
+                btn.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    btn.disabled = true;
+                    const codespaceDiv = btn.closest('.codespace');
+                    const statusSpan = codespaceDiv.querySelector('.status');
+                    getToken(function (token) {
+                        fetch(`https://api.github.com/user/codespaces/${btn.dataset.name}`, {
+                            method: 'DELETE',
+                            headers: {
+                                Authorization: `Bearer ${token}`,
+                                'Accept': 'application/vnd.github+json'
+                            }
+                        })
+                            .then(function (res) {
+                                if (res.ok) {
+                                    btn.classList.add('opacity-50', 'cursor-not-allowed');
+                                    if (statusSpan) {
+                                        statusSpan.innerText = 'Deleted';
+                                        statusSpan.className = 'status px-2 py-1 rounded text-xs font-semibold bg-gray-400 text-white';
+                                    }
+                                } else {
+                                    btn.disabled = false;
+                                }
+                                // Refresh codespaces list after deleting
+                                fetchCodespaces(token);
+                            })
+                            .catch(function () {
+                                btn.disabled = false;
+                            });
+                    });
+                });
+            });
+            document.querySelectorAll('.stop-codespace-btn').forEach(btn => {
+                if (!btn.disabled) {
+                    btn.addEventListener('click', e => {
+                        e.preventDefault();
+                        btn.disabled = true;
+                        const codespaceDiv = btn.closest('.codespace');
+                        const statusSpan = codespaceDiv.querySelector('.status');
+                        getToken(token => {
+                            fetch(`https://api.github.com/user/codespaces/${btn.dataset.name}/stop`, {
+                                method: 'POST',
+                                headers: {
+                                    Authorization: `Bearer ${token}`,
+                                    'Accept': 'application/vnd.github+json'
+                                }
+                            })
+                                .then(res => {
+                                    if (!res.ok) {
+                                        btn.disabled = false;
+                                    }
+                                    // Refresh codespaces list after stopping
+                                    fetchCodespaces(token);
+                                })
+                                .catch(() => {
+                                    btn.disabled = false;
+                                });
+                        });
+                    });
+                }
+            });
+            document.querySelectorAll('.start-codespace-btn').forEach(btn => {
+                btn.addEventListener('click', e => {
+                    e.preventDefault();
+                    btn.disabled = true;
+                    const codespaceDiv = btn.closest('.codespace');
+                    const statusSpan = codespaceDiv.querySelector('.status');
+                    const codespaceUrl = codespaceDiv.querySelector('.codespace-link').dataset.url;
+                    openTab(codespaceUrl);
                 });
             });
         })
@@ -205,7 +309,7 @@ function fetchCodespaces(token) {
         });
 }
 
-function startAutoRefresh(intervalMs = 3000) {
+function startAutoRefresh(intervalMs = 1000) {
     // Refresh every intervalMs milliseconds
     setInterval(fetchAndRender, intervalMs);
 }
