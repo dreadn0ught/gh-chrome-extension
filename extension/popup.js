@@ -17,31 +17,32 @@ function setToken(token, cb) {
     }
 }
 
-const GITHUB_CLIENT_ID = 'YOUR_CLIENT_ID_HERE'; // TODO: Replace with your GitHub OAuth App Client ID
-const GITHUB_OAUTH_URL = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&scope=repo%20read:user%20codespace&redirect_uri=https://<EXTENSION_ID>.chromiumapp.org/`;
+function removeToken(cb) {
+    if (isChromeExt) {
+        chrome.storage.sync.remove('ghToken', cb);
+    } else {
+        localStorage.removeItem('ghToken');
+        if (cb) cb();
+    }
+}
 
-function showLoginButton() {
+function showTokenInput() {
+    document.getElementById('login-button').style.display = '';
+    document.getElementById('main-content').style.display = 'none';
     workflowStatus.innerHTML = '';
+    codespacesList.innerHTML = '';
+    codespacesTitle.innerHTML = '';
     const loginDiv = document.getElementById('login-button');
-    loginDiv.className = 'flex justify-center my-4';
-    loginDiv.innerHTML = `<button id="github-login" class="login-btn bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow">Login with GitHub</button>`;
-    document.getElementById('github-login').addEventListener('click', () => {
-        if (isChromeExt) {
-            chrome.identity.launchWebAuthFlow({
-                url: GITHUB_OAUTH_URL,
-                interactive: true
-            }, function (redirectUrl) {
-                if (redirectUrl) {
-                    // Extract code from redirectUrl
-                    const codeMatch = redirectUrl.match(/[?&]code=([^&]+)/);
-                    if (codeMatch) {
-                        const code = codeMatch[1];
-                        codespacesTitle.innerHTML = `<div class="text-center text-sm text-gray-700">OAuth code received: <span class="font-mono bg-gray-100 px-2 py-1 rounded">${code}</span><br>Exchange this code for an access token on your backend.</div>`;
-                    }
-                }
-            });
-        } else {
-            window.open(GITHUB_OAUTH_URL, '_blank');
+    loginDiv.className = 'flex flex-col items-center my-4';
+    loginDiv.innerHTML = `
+        <input id="pat-input" type="password" placeholder="Enter GitHub PAT" class="border rounded px-3 py-2 mb-2 w-full max-w-xs" />
+        <button id="pat-save" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow w-full max-w-xs mb-2">Save Token</button>
+        <div class="text-xs text-gray-500 mt-2 text-center w-full max-w-xs">Your token is stored locally and never shared.</div>
+    `;
+    document.getElementById('pat-save').addEventListener('click', () => {
+        const token = document.getElementById('pat-input').value.trim();
+        if (token) {
+            setToken(token, fetchAndRender);
         }
     });
 }
@@ -54,12 +55,26 @@ function getToken(cb) {
     }
 }
 
+function setupLogoutButton() {
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            removeToken(() => {
+                fetchAndRender();
+            });
+        });
+    }
+}
+
 function fetchAndRender() {
     getToken(ghToken => {
         if (!ghToken) {
-            showLoginButton();
+            showTokenInput();
             return;
         }
+        document.getElementById('login-button').style.display = 'none';
+        document.getElementById('main-content').style.display = '';
+        setupLogoutButton();
         fetchCodespaces(ghToken);
         fetchLatestWorkflows(ghToken);
     });

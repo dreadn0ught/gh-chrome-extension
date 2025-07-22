@@ -10,13 +10,25 @@
 
 <body class="bg-gray-50 min-w-[320px] min-h-[400px] font-sans">
     <div class="container mx-auto p-4">
-        <div id="login-button" class="flex justify-center my-4">
+        <div id="login-button" class="flex flex-col items-center my-4">
+            <input id="pat-input" type="password" placeholder="Enter GitHub PAT"
+                class="border rounded px-3 py-2 mb-2 w-full max-w-xs" />
+            <button id="pat-save"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded shadow w-full max-w-xs mb-2">Save
+                Token</button>
+            <div class="text-xs text-gray-500 mt-2 text-center w-full max-w-xs">Your token is stored locally and never
+                shared.</div>
         </div>
-        <h2 id="codespaces-title" class="text-xl font-bold text-gray-800 mb-2">Codespaces</h2>
-        <div id="codespaces-list" class="bg-white rounded-lg shadow mb-6 p-3"></div>
-        <h2 id="workflows-title" class="text-xl font-bold text-gray-800 mb-2">Latest Workflow</h2>
-        <div id="workflow-status" class="bg-white rounded-lg shadow p-3"></div>
-        <!-- OAuth login button will be injected by JS if needed -->
+        <div id="main-content" style="display:none;">
+            <div class="flex justify-end mb-2">
+                <button id="logout-btn"
+                    class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded">Logout</button>
+            </div>
+            <h2 id="codespaces-title" class="text-xl font-bold text-gray-800 mb-2">Codespaces</h2>
+            <div id="codespaces-list" class="bg-white rounded-lg shadow mb-6 p-3"></div>
+            <h2 id="workflows-title" class="text-xl font-bold text-gray-800 mb-2">Latest Workflow</h2>
+            <div id="workflow-status" class="bg-white rounded-lg shadow p-3"></div>
+        </div>
     </div>
     <script src="popup.js"></script>
 </body>
