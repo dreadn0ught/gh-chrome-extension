@@ -1,6 +1,8 @@
 // Detect environment
 const isChromeExt = typeof chrome !== 'undefined' && chrome.storage && chrome.runtime;
 
+// Number of workflow runs to show
+const MAX_WORKFLOW_RUNS = 5;
 
 // DOM elements (move to top so always defined)
 const codespacesTitle = document.getElementById('codespaces-title');
@@ -91,11 +93,11 @@ function fetchLatestWorkflows(token) {
                 workflowStatus.innerHTML = '<div>No repositories found.</div>';
                 return;
             }
-            // For each repo, fetch up to 10 latest workflow runs
+            // For each repo, fetch up to 5 latest workflow runs
             const workflowPromises = repos.map(repo => {
                 const owner = repo.owner.login;
                 const name = repo.name;
-                return fetch(`https://api.github.com/repos/${owner}/${name}/actions/runs?per_page=10`, {
+                return fetch(`https://api.github.com/repos/${owner}/${name}/actions/runs?per_page=${MAX_WORKFLOW_RUNS}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 })
                     .then(res => res.json())
@@ -105,6 +107,8 @@ function fetchLatestWorkflows(token) {
                                 repo: name,
                                 owner,
                                 name: run.name || run.workflow_id,
+                                workflow_name: run.workflow_name || run.name || '',
+                                commit_message: run.head_commit && run.head_commit.message ? run.head_commit.message : '',
                                 status: run.conclusion || run.status,
                                 url: run.html_url,
                                 created_at: run.created_at
@@ -117,17 +121,49 @@ function fetchLatestWorkflows(token) {
 
             Promise.all(workflowPromises).then(results => {
                 const allRuns = results.flat();
-                const runs = allRuns.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10);
+                const runs = allRuns.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, MAX_WORKFLOW_RUNS);
                 if (runs.length === 0) {
                     workflowStatus.innerHTML = '<div class="text-center text-gray-500">No workflow runs found.</div>';
                     return;
                 }
-                workflowStatus.innerHTML = runs.map(run => `
-                    <div class="workflow flex items-center justify-between py-2 border-b last:border-b-0">
-                        <a href="#" data-url="${run.url}" class="workflow-link text-blue-600 hover:underline font-medium">${run.name} <span class="text-xs text-gray-500">(${run.repo})</span></a>
-                        <span class="status px-2 py-1 rounded text-xs font-semibold ${run.status === 'success' ? 'bg-green-500 text-white' : run.status === 'failure' ? 'bg-red-500 text-white' : 'bg-yellow-400 text-white'}">${run.status}</span>
-                    </div>
-                `).join('');
+                workflowStatus.innerHTML = runs.map(run => {
+                    const startedAgo = timeAgo(run.created_at);
+                    let statusHtml;
+                    if (run.status === 'in_progress') {
+                        statusHtml = `<span class="status px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 bg-yellow-400 text-white">
+            <svg class="animate-spin h-4 w-4 mr-1 inline-block" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            In Progress
+        </span>`;
+                    } else {
+                        statusHtml = `<span class="status px-2 py-1 rounded text-xs font-semibold ${run.status === 'success' ? 'bg-green-500 text-white' : run.status === 'failure' ? 'bg-red-500 text-white' : 'bg-yellow-400 text-white'}">${run.status}</span>`;
+                    }
+                    return `
+    <div class="workflow flex flex-col py-2 border-b last:border-b-0">
+        <div class="flex items-center justify-between">
+            <a href="#" data-url="${run.url}" class="workflow-link text-blue-600 hover:underline font-medium">${run.name} <span class="text-xs text-gray-500">(${run.repo})</span></a>
+            ${statusHtml}
+        </div>
+        <div class="text-xs text-gray-600 mt-1">Started: <span class="font-mono">${startedAgo}</span></div>
+        <div class="text-xs text-gray-600 mt-1">Commit: <span class="font-mono">${run.commit_message || 'N/A'}</span></div>
+    </div>
+    `;
+                }).join('');
+                // Utility: time ago formatting
+                function timeAgo(dateString) {
+                    const now = new Date();
+                    const then = new Date(dateString);
+                    const seconds = Math.floor((now - then) / 1000);
+                    if (seconds < 60) return `${seconds}s ago`;
+                    const minutes = Math.floor(seconds / 60);
+                    if (minutes < 60) return `${minutes}m ago`;
+                    const hours = Math.floor(minutes / 60);
+                    if (hours < 24) return `${hours}h ago`;
+                    const days = Math.floor(hours / 24);
+                    return `${days}d ago`;
+                }
                 document.querySelectorAll('.workflow-link').forEach(link => {
                     link.addEventListener('click', e => {
                         e.preventDefault();
@@ -169,7 +205,7 @@ function fetchCodespaces(token) {
         });
 }
 
-function startAutoRefresh(intervalMs = 10000) {
+function startAutoRefresh(intervalMs = 3000) {
     // Refresh every intervalMs milliseconds
     setInterval(fetchAndRender, intervalMs);
 }
