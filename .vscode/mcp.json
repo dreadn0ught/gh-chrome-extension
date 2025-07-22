@@ -1,0 +1,79 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "gh-pat",
+      "description": "GitHub PAT",
+      "password": true
+    },
+    {
+      "type": "promptString",
+      "id": "aws-profile",
+      "description": "AWS CLI profile"
+    }
+  ],
+  "servers": {
+    // remote HTTP endpoint – nothing to install
+    "github": {
+      "url": "https://api.githubcopilot.com/mcp/"
+    },
+    "awsApi": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "awslabs.aws-api-mcp-server@latest"
+      ],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_REGION": "eu-west-1"
+      }
+    },
+    "awsKnowledge": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "awslabs.aws-documentation-mcp-server"
+      ],
+      "env": {
+        "AWS_PROFILE": "default",
+        "AWS_REGION": "eu-west-1"
+      }
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp"
+      ], // installs on first run
+      "dev": {
+        "debug": {
+          "type": "node"
+        }
+      }
+    },
+    "awsFrontend": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "awslabs.frontend-mcp-server@latest"
+      ],
+      "env": {
+        "AWS_PROFILE": "${input:aws-profile}"
+      }
+    },
+    "awsServerless": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "awslabs.aws-serverless-mcp-server@latest"
+      ],
+      "env": {
+        "AWS_ACCESS_KEY_ID": "${env:AWS_ACCESS_KEY_ID}",
+        "AWS_SECRET_ACCESS_KEY": "${env:AWS_SECRET_ACCESS_KEY}",
+        "AWS_SESSION_TOKEN": "${env:AWS_SESSION_TOKEN}",
+        "AWS_REGION": "eu-west-1"
+      }
+    }
+  }
+}

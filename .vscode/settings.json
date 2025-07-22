@@ -1,0 +1,23 @@
+{
+
+    "github.copilot.experimentalAgentChat": true
+
+    "python.analysis.diagnosticSeverityOverrides": {
+      "reportMissingImports": "none"
+    },
+    "python.testing.pytestArgs": [
+      "tests"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    // Remove AWS telemetry
+    "aws.telemetry": false,
+    // delete any extra spaces at line-end
+    "files.trimTrailingWhitespace": true,
+
+    // delete indent that ends up on otherwise-empty lines
+    "editor.trimAutoWhitespace": true,
+
+    // format on save with Black (removes W29x, E30x, etc.)
+    "editor.formatOnSave": true,
+}

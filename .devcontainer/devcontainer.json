@@ -1,0 +1,33 @@
+{
+    "name": "Ossprey",
+    "image": "mcr.microsoft.com/devcontainers/typescript-node:latest",
+    "customizations": {
+        "vscode": {
+            "mcp": {
+                "servers": {
+                    "$import": "./.vscode/mcp.json#servers"
+                }
+            },
+            "extensions": [
+                "GitHub.copilot",
+                "GitHub.copilot-chat", // Required for agent mode
+                "GitHub.copilot-mcp", // Adds MCP server UI
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "njpwerner.autodocstring",
+                "ms-python.flake8",
+                "ms-python.isort",
+                "ms-python.black-formatter",
+                "python-poetry.vscode-py-poetry",
+                "aaron-bond.better-comments",
+                "github.vscode-github-actions",
+                "AmazonWebServices.aws-toolkit-vscode"
+            ]
+        }
+    },
+    /* turn it off for the SAM CLI inside the container too */
+    "containerEnv": {
+        "SAM_CLI_TELEMETRY": "0" // CLI respects this env var :contentReference[oaicite:3]{index=3}
+    },
+    "postCreateCommand": "bash .devcontainer/scripts/post-create.sh"
+}
