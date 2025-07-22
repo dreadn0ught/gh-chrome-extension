@@ -1,0 +1,25 @@
+{
+    "manifest_version": 3,
+    "name": "GitHub Codespaces & Actions Status",
+    "description": "Shows your running Codespaces and latest GitHub Actions workflow status.",
+    "version": "1.0",
+    "permissions": [
+        "storage",
+        "tabs"
+    ],
+    "host_permissions": [
+        "https://api.github.com/*"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icon16.png",
+            "32": "icon32.png",
+            "48": "icon48.png",
+            "128": "icon128.png"
+        }
+    },
+    "background": {
+        "service_worker": "background.js"
+    }
+}
