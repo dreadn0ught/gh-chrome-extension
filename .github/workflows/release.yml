@@ -1,4 +1,7 @@
+
 name: Release Chrome Extension
+permissions:
+  contents: write
 
 on:
   workflow_dispatch:
