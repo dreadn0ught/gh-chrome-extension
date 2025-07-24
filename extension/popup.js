@@ -189,6 +189,7 @@ function fetchCodespaces(token) {
             }
             codespacesList.innerHTML = data.codespaces.map(cs => {
                 const isAvailable = cs.state === 'Available';
+                const isLoading = cs.state === 'Creating' || cs.state === 'Starting' || cs.state === 'Stopping' || cs.state === 'Deleting';
                 // Try to get repo name from cs.repository.name or cs.repository.full_name if available
                 let repoName = '';
                 if (cs.repository && (cs.repository.name || cs.repository.full_name)) {
@@ -234,9 +235,6 @@ function fetchCodespaces(token) {
             document.querySelectorAll('.delete-codespace-btn').forEach(btn => {
                 btn.addEventListener('click', function (e) {
                     e.preventDefault();
-                    btn.disabled = true;
-                    const codespaceDiv = btn.closest('.codespace');
-                    const statusSpan = codespaceDiv.querySelector('.status');
                     getToken(function (token) {
                         fetch(`https://api.github.com/user/codespaces/${btn.dataset.name}`, {
                             method: 'DELETE',
@@ -245,22 +243,10 @@ function fetchCodespaces(token) {
                                 'Accept': 'application/vnd.github+json'
                             }
                         })
-                            .then(function (res) {
-                                if (res.ok) {
-                                    btn.classList.add('opacity-50', 'cursor-not-allowed');
-                                    if (statusSpan) {
-                                        statusSpan.innerText = 'Deleted';
-                                        statusSpan.className = 'status px-2 py-1 rounded text-xs font-semibold bg-gray-400 text-white';
-                                    }
-                                } else {
-                                    btn.disabled = false;
-                                }
+                            .then(_ => {
                                 // Refresh codespaces list after deleting
                                 fetchCodespaces(token);
                             })
-                            .catch(function () {
-                                btn.disabled = false;
-                            });
                     });
                 });
             });
@@ -268,9 +254,6 @@ function fetchCodespaces(token) {
                 if (!btn.disabled) {
                     btn.addEventListener('click', e => {
                         e.preventDefault();
-                        btn.disabled = true;
-                        const codespaceDiv = btn.closest('.codespace');
-                        const statusSpan = codespaceDiv.querySelector('.status');
                         getToken(token => {
                             fetch(`https://api.github.com/user/codespaces/${btn.dataset.name}/stop`, {
                                 method: 'POST',
@@ -279,16 +262,10 @@ function fetchCodespaces(token) {
                                     'Accept': 'application/vnd.github+json'
                                 }
                             })
-                                .then(res => {
-                                    if (!res.ok) {
-                                        btn.disabled = false;
-                                    }
+                                .then(_ => {
                                     // Refresh codespaces list after stopping
                                     fetchCodespaces(token);
                                 })
-                                .catch(() => {
-                                    btn.disabled = false;
-                                });
                         });
                     });
                 }
@@ -296,9 +273,7 @@ function fetchCodespaces(token) {
             document.querySelectorAll('.start-codespace-btn').forEach(btn => {
                 btn.addEventListener('click', e => {
                     e.preventDefault();
-                    btn.disabled = true;
                     const codespaceDiv = btn.closest('.codespace');
-                    const statusSpan = codespaceDiv.querySelector('.status');
                     const codespaceUrl = codespaceDiv.querySelector('.codespace-link').dataset.url;
                     openTab(codespaceUrl);
                 });

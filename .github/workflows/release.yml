@@ -1,0 +1,55 @@
+name: Release Chrome Extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version (e.g. 1.2.3)'
+        required: true
+        default: ''
+
+jobs:
+  build-and-zip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies (if any)
+        run: |
+          if [ -f package.json ]; then npm ci; fi
+
+      - name: Lint (if eslint config exists)
+        run: |
+          if [ -f package.json ] && [ -f .eslintrc.js ] || [ -f .eslintrc.json ]; then npm run lint || true; fi
+
+      - name: Set version in manifest.json
+        run: |
+          jq --arg v "${{ github.event.inputs.release_version }}" '.version = $v' extension/manifest.json > tmp_manifest && mv tmp_manifest extension/manifest.json
+
+      - name: Zip extension
+        run: |
+          cd extension
+          zip -r ../gh-chrome-extension-${{ github.event.inputs.release_version }}.zip .
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gh-chrome-extension-${{ github.event.inputs.release_version }}
+          path: gh-chrome-extension-${{ github.event.inputs.release_version }}.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.event.inputs.release_version }}
+          name: v${{ github.event.inputs.release_version }}
+          body: |
+            Release v${{ github.event.inputs.release_version }}
+          files: gh-chrome-extension-${{ github.event.inputs.release_version }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
